@@ -475,7 +475,7 @@ impl<F: RichField + Extendable<D>, const D: usize, FF: PrimeField> SimpleGenerat
         let b_biguint = b.to_canonical_biguint();
         let sum_biguint = a_biguint + b_biguint;
         let modulus = FF::order();
-        let (overflow, sum_reduced) = if sum_biguint > modulus {
+        let (overflow, sum_reduced) = if sum_biguint >= modulus {
             (true, sum_biguint - modulus)
         } else {
             (false, sum_biguint)
