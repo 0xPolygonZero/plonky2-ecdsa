@@ -1,7 +1,7 @@
 [package]
 name = "plonky2_ecdsa"
 description = "ECDSA gadget for Plonky2"
-version = "0.1.0"
+version = "0.1.3"
 license = "MIT OR Apache-2.0"
 edition = "2021"
 
@@ -11,10 +11,10 @@ parallel = ["plonky2_maybe_rayon/parallel", "plonky2/parallel"]
 [dependencies]
 anyhow = { version = "1.0.40", default-features = false }
 itertools = { version = "0.10.0", default-features = false }
-plonky2_maybe_rayon = { git = "https://github.com/mir-protocol/plonky2", rev = "39d2237dee8b8d7c9049857f8ef54799d6c2cdda", default-features = false }
+plonky2_maybe_rayon = { git = "https://github.com/mir-protocol/plonky2", rev = "3de92d9ed1721cec133e4e1e1b3ec7facb756ccf", default-features = false }
 num = { version = "0.4.0", default-features = false }
-plonky2 = { git = "https://github.com/mir-protocol/plonky2", rev = "39d2237dee8b8d7c9049857f8ef54799d6c2cdda", default-features = false }
-plonky2_u32 = { git = "https://github.com/cf/plonky2-u32", rev = "465d93bbc82a60fd987232b2d21ea6a74ec2fd96", default-features = false }
+plonky2 = { git = "https://github.com/mir-protocol/plonky2", rev = "3de92d9ed1721cec133e4e1e1b3ec7facb756ccf", default-features = false }
+plonky2_u32 = { git = "https://github.com/cf/plonky2-u32", rev = "5b3cb748be32844ae449c62eae6f08278e4b4911", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 
 [dev-dependencies]
