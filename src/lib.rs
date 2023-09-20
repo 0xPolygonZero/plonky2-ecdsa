@@ -5,3 +5,5 @@ extern crate alloc;
 
 pub mod curve;
 pub mod gadgets;
+
+mod serialization;
