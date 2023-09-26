@@ -1,5 +1,7 @@
-use alloc::vec::Vec;
+use alloc::{string::String, vec::Vec};
 use core::marker::PhantomData;
+use plonky2::plonk::circuit_data::CommonCircuitData;
+use plonky2::util::serialization::{Buffer, IoResult, Read, Write};
 
 use plonky2::field::extension::Extendable;
 use plonky2::field::secp256k1_base::Secp256K1Base;
@@ -17,6 +19,7 @@ use crate::gadgets::biguint::{GeneratedValuesBigUint, WitnessBigUint};
 use crate::gadgets::curve::{AffinePointTarget, CircuitBuilderCurve};
 use crate::gadgets::curve_msm::curve_msm_circuit;
 use crate::gadgets::nonnative::{CircuitBuilderNonNative, NonNativeTarget};
+use crate::serialization::{ReadBigUintTarget, WriteBigUintTarget};
 
 pub trait CircuitBuilderGlv<F: RichField + Extendable<D>, const D: usize> {
     fn secp256k1_glv_beta(&mut self) -> NonNativeTarget<Secp256K1Base>;
@@ -109,7 +112,7 @@ struct GLVDecompositionGenerator<F: RichField + Extendable<D>, const D: usize> {
     _phantom: PhantomData<F>,
 }
 
-impl<F: RichField + Extendable<D>, const D: usize> SimpleGenerator<F>
+impl<F: RichField + Extendable<D>, const D: usize> SimpleGenerator<F, D>
     for GLVDecompositionGenerator<F, D>
 {
     fn dependencies(&self) -> Vec<Target> {
@@ -127,6 +130,48 @@ impl<F: RichField + Extendable<D>, const D: usize> SimpleGenerator<F>
         out_buffer.set_biguint_target(&self.k2.value, &k2.to_canonical_biguint());
         out_buffer.set_bool_target(self.k1_neg, k1_neg);
         out_buffer.set_bool_target(self.k2_neg, k2_neg);
+    }
+
+    fn deserialize(src: &mut Buffer, _common_data: &CommonCircuitData<F, D>) -> IoResult<Self>
+    where
+        Self: Sized,
+    {
+        let k = NonNativeTarget {
+            value: src.read_biguint_target()?,
+            _phantom: PhantomData,
+        };
+        let k1 = NonNativeTarget {
+            value: src.read_biguint_target()?,
+            _phantom: PhantomData,
+        };
+        let k2 = NonNativeTarget {
+            value: src.read_biguint_target()?,
+            _phantom: PhantomData,
+        };
+        let k1_neg = BoolTarget::new_unsafe(src.read_target()?);
+        let k2_neg = BoolTarget::new_unsafe(src.read_target()?);
+
+        Ok(Self {
+            k,
+            k1,
+            k2,
+            k1_neg,
+            k2_neg,
+            _phantom: PhantomData,
+        })
+    }
+
+    fn id(&self) -> String {
+        String::from("GLVDecompositionGenerator")
+    }
+
+    fn serialize(&self, dst: &mut Vec<u8>, _common_data: &CommonCircuitData<F, D>) -> IoResult<()> {
+        dst.write_biguint_target(self.k.value.clone())?;
+        dst.write_biguint_target(self.k1.value.clone())?;
+        dst.write_biguint_target(self.k2.value.clone())?;
+        dst.write_target_bool(self.k1_neg)?;
+        dst.write_target_bool(self.k2_neg)?;
+        Ok(())
     }
 }
 
