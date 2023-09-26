@@ -1,5 +1,6 @@
 use alloc::vec::Vec;
 use core::marker::PhantomData;
+use alloc::string::{String, ToString};
 
 use plonky2::field::extension::Extendable;
 use plonky2::field::secp256k1_base::Secp256K1Base;
@@ -10,6 +11,7 @@ use plonky2::iop::generator::{GeneratedValues, SimpleGenerator};
 use plonky2::iop::target::{BoolTarget, Target};
 use plonky2::iop::witness::{PartitionWitness, WitnessWrite};
 use plonky2::plonk::circuit_builder::CircuitBuilder;
+use plonky2::util::serialization::{IoResult, Buffer, Write, Read};
 
 use crate::curve::glv::{decompose_secp256k1_scalar, GLV_BETA, GLV_S};
 use crate::curve::secp256k1::Secp256K1;
@@ -17,6 +19,8 @@ use crate::gadgets::biguint::{GeneratedValuesBigUint, WitnessBigUint};
 use crate::gadgets::curve::{AffinePointTarget, CircuitBuilderCurve};
 use crate::gadgets::curve_msm::curve_msm_circuit;
 use crate::gadgets::nonnative::{CircuitBuilderNonNative, NonNativeTarget};
+
+use super::biguint::BigUintTarget;
 
 pub trait CircuitBuilderGlv<F: RichField + Extendable<D>, const D: usize> {
     fn secp256k1_glv_beta(&mut self) -> NonNativeTarget<Secp256K1Base>;
@@ -127,6 +131,43 @@ impl<F: RichField + Extendable<D>, const D: usize> SimpleGenerator<F>
         out_buffer.set_biguint_target(&self.k2.value, &k2.to_canonical_biguint());
         out_buffer.set_bool_target(self.k1_neg, k1_neg);
         out_buffer.set_bool_target(self.k2_neg, k2_neg);
+    }
+
+    fn id(&self) -> String {
+        "GLVDecompositionGenerator".to_string()
+    }
+
+    fn serialize(&self, dst: &mut Vec<u8>) -> IoResult<()> {
+        self.k.value.write_to_serializer(dst)?;
+        self.k1.value.write_to_serializer(dst)?;
+        self.k2.value.write_to_serializer(dst)?;
+        dst.write_target_bool(self.k1_neg)?;
+        dst.write_target_bool(self.k2_neg)
+    }
+
+    fn deserialize(src: &mut Buffer) -> IoResult<Self>{
+        let k = NonNativeTarget::<Secp256K1Scalar>{
+            value: BigUintTarget::deserialize(src)?,
+            _phantom: PhantomData,
+        };
+        let k1 = NonNativeTarget::<Secp256K1Scalar>{
+            value: BigUintTarget::deserialize(src)?,
+            _phantom: PhantomData,
+        };
+        let k2 = NonNativeTarget::<Secp256K1Scalar>{
+            value: BigUintTarget::deserialize(src)?,
+            _phantom: PhantomData,
+        };
+        let k1_neg = src.read_target_bool()?;
+        let k2_neg = src.read_target_bool()?;
+        Ok(GLVDecompositionGenerator{
+            k,
+            k1,
+            k2,
+            k1_neg,
+            k2_neg,
+            _phantom: PhantomData,
+        })
     }
 }
 

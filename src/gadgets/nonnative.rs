@@ -2,6 +2,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 use core::marker::PhantomData;
 
+use alloc::string::{String, ToString};
 use num::{BigUint, Integer, One, Zero};
 use plonky2::field::extension::Extendable;
 use plonky2::field::types::{Field, PrimeField};
@@ -14,6 +15,8 @@ use plonky2::util::ceil_div_usize;
 use plonky2_u32::gadgets::arithmetic_u32::{CircuitBuilderU32, U32Target};
 use plonky2_u32::gadgets::range_check::range_check_u32_circuit;
 use plonky2_u32::witness::GeneratedValuesU32;
+
+use plonky2::util::serialization::{IoResult, Buffer, Write, Read};
 
 use crate::gadgets::biguint::{
     BigUintTarget, CircuitBuilderBiguint, GeneratedValuesBigUint, WitnessBigUint,
@@ -484,6 +487,41 @@ impl<F: RichField + Extendable<D>, const D: usize, FF: PrimeField> SimpleGenerat
         out_buffer.set_biguint_target(&self.sum.value, &sum_reduced);
         out_buffer.set_bool_target(self.overflow, overflow);
     }
+
+    fn id(&self) -> String {
+        "NonNativeAdditionGenerator".to_string()
+    }
+
+    fn serialize(&self, dst: &mut Vec<u8>) -> IoResult<()> {
+        self.a.value.write_to_serializer(dst)?;
+        self.b.value.write_to_serializer(dst)?;
+        self.sum.value.write_to_serializer(dst)?;
+        dst.write_target_bool(self.overflow)
+    }
+
+    fn deserialize(src: &mut Buffer) -> IoResult<Self>{
+        let a = NonNativeTarget {
+            value: BigUintTarget::deserialize(src)?,
+            _phantom: PhantomData,
+        };
+        let b = NonNativeTarget {
+            value: BigUintTarget::deserialize(src)?,
+            _phantom: PhantomData,
+        };
+        let sum = NonNativeTarget {
+            value: BigUintTarget::deserialize(src)?,
+            _phantom: PhantomData,
+        };
+        let overflow = src.read_target_bool()?;
+
+        Ok(NonNativeAdditionGenerator {
+            a,
+            b,
+            sum,
+            overflow,
+            _phantom: PhantomData,
+        })
+    }
 }
 
 #[derive(Debug)]
@@ -529,6 +567,44 @@ impl<F: RichField + Extendable<D>, const D: usize, FF: PrimeField> SimpleGenerat
         out_buffer.set_biguint_target(&self.sum.value, &sum_reduced);
         out_buffer.set_u32_target(self.overflow, overflow);
     }
+
+    fn id(&self) -> String {
+        "NonNativeMultipleAddsGenerator".to_string()
+    }
+
+    fn serialize(&self, dst: &mut Vec<u8>) -> IoResult<()> {
+        let summands_count = self.summands.len() as u32;
+        dst.write_u32(summands_count)?;
+        self.summands
+            .iter()
+            .try_for_each(|summand| summand.value.write_to_serializer(dst))?;
+        self.sum.value.write_to_serializer(dst)?;
+        dst.write_target(self.overflow.0)
+    }
+
+    fn deserialize(src: &mut Buffer) -> IoResult<Self>{
+        let summands_count = src.read_u32()?;
+        let mut summands = Vec::with_capacity(summands_count as usize);
+        for _ in 0..summands_count {
+            let summand = NonNativeTarget {
+                value: BigUintTarget::deserialize(src)?,
+                _phantom: PhantomData,
+            };
+            summands.push(summand);
+        }
+        let sum = NonNativeTarget {
+            value: BigUintTarget::deserialize(src)?,
+            _phantom: PhantomData,
+        };
+        let overflow = src.read_target()?;
+
+        Ok(NonNativeMultipleAddsGenerator {
+            summands,
+            sum,
+            overflow: U32Target(overflow),
+            _phantom: PhantomData,
+        })
+    }
 }
 
 #[derive(Debug)]
@@ -570,6 +646,41 @@ impl<F: RichField + Extendable<D>, const D: usize, FF: PrimeField> SimpleGenerat
         out_buffer.set_biguint_target(&self.diff.value, &diff_biguint);
         out_buffer.set_bool_target(self.overflow, overflow);
     }
+
+    fn id(&self) -> String {
+        "NonNativeSubtractionGenerator".to_string()
+    }
+
+    fn serialize(&self, dst: &mut Vec<u8>) -> IoResult<()> {
+        self.a.value.write_to_serializer(dst)?;
+        self.b.value.write_to_serializer(dst)?;
+        self.diff.value.write_to_serializer(dst)?;
+        dst.write_target_bool(self.overflow)
+    }
+
+    fn deserialize(src: &mut Buffer) -> IoResult<Self> {
+        let a = NonNativeTarget {
+            value: BigUintTarget::deserialize(src)?,
+            _phantom: PhantomData,
+        };
+        let b = NonNativeTarget {
+            value: BigUintTarget::deserialize(src)?,
+            _phantom: PhantomData,
+        };
+        let diff = NonNativeTarget {
+            value: BigUintTarget::deserialize(src)?,
+            _phantom: PhantomData,
+        };
+        let overflow = src.read_target_bool()?;
+
+        Ok(NonNativeSubtractionGenerator {
+            a,
+            b,
+            diff,
+            overflow,
+            _phantom: PhantomData,
+        })
+    }
 }
 
 #[derive(Debug)]
@@ -609,6 +720,41 @@ impl<F: RichField + Extendable<D>, const D: usize, FF: PrimeField> SimpleGenerat
         out_buffer.set_biguint_target(&self.prod.value, &prod_reduced);
         out_buffer.set_biguint_target(&self.overflow, &overflow_biguint);
     }
+
+    fn id(&self) -> String {
+        "NonNativeMultiplicationGenerator".to_string()
+    }
+
+    fn serialize(&self, dst: &mut Vec<u8>) -> IoResult<()> {
+        self.a.value.write_to_serializer(dst)?;
+        self.b.value.write_to_serializer(dst)?;
+        self.prod.value.write_to_serializer(dst)?;
+        self.overflow.write_to_serializer(dst)
+    }
+
+    fn deserialize(src: &mut Buffer) -> IoResult<Self>{
+        let a = NonNativeTarget {
+            value: BigUintTarget::deserialize(src)?,
+            _phantom: PhantomData,
+        };
+        let b = NonNativeTarget {
+            value: BigUintTarget::deserialize(src)?,
+            _phantom: PhantomData,
+        };
+        let prod = NonNativeTarget {
+            value: BigUintTarget::deserialize(src)?,
+            _phantom: PhantomData,
+        };
+        let overflow = BigUintTarget::deserialize(src)?;
+
+        Ok(NonNativeMultiplicationGenerator {
+            a,
+            b,
+            prod,
+            overflow,
+            _phantom: PhantomData,
+        })
+    }
 }
 
 #[derive(Debug)]
@@ -639,6 +785,34 @@ impl<F: RichField + Extendable<D>, const D: usize, FF: PrimeField> SimpleGenerat
         out_buffer.set_biguint_target(&self.div, &div);
         out_buffer.set_biguint_target(&self.inv, &inv_biguint);
     }
+
+    fn id(&self) -> String {
+        "NonNativeInverseGenerator".to_string()
+    }
+
+    fn serialize(&self, dst: &mut Vec<u8>) -> IoResult<()> {
+        self.x.value.write_to_serializer(dst)?;
+        self.inv.write_to_serializer(dst)?;
+        self.div.write_to_serializer(dst)
+
+    }
+
+    fn deserialize(src: &mut Buffer) -> IoResult<Self>{
+        let x = NonNativeTarget {
+            value: BigUintTarget::deserialize(src)?,
+            _phantom: PhantomData,
+        };
+        let inv = BigUintTarget::deserialize(src)?;
+        let div = BigUintTarget::deserialize(src)?;
+
+        Ok(NonNativeInverseGenerator {
+            x,
+            inv,
+            div,
+            _phantom: PhantomData,
+        })
+    }
+
 }
 
 #[cfg(test)]
