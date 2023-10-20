@@ -243,6 +243,9 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilderBiguint<F, D>
         let div = self.add_virtual_biguint_target(div_num_limbs);
         let rem = self.add_virtual_biguint_target(b_len);
 
+        range_check_u32_circuit(self, div.limbs.clone());
+        range_check_u32_circuit(self, rem.limbs.clone());
+
         self.add_simple_generator(BigUintDivRemGenerator::<F, D> {
             a: a.clone(),
             b: b.clone(),
