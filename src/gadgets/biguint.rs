@@ -251,6 +251,9 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilderBiguint<F, D>
             _phantom: PhantomData,
         });
 
+        range_check_u32_circuit(self, div.limbs.clone());
+        range_check_u32_circuit(self, rem.limbs.clone());
+
         let div_b = self.mul_biguint(&div, b);
         let div_b_plus_rem = self.add_biguint(&div_b, &rem);
         self.connect_biguint(a, &div_b_plus_rem);
